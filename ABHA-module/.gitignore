@@ -1,0 +1,19 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases (SQLite)
+*.db
+*.db-journal
+*.db-wal
+
+# OS metadata
+.DS_Store
+Thumbs.db
