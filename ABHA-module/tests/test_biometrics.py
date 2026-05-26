@@ -146,6 +146,74 @@ class TestBiometricMatcher(unittest.TestCase):
             # Correct behavior: no match returned below threshold
             self.assertTrue(distance > 0.6)
 
+    def test_checkin_timestamp_updated(self):
+        v = self.matcher.generate_random_encoding()
+        user_id = self.matcher.register_user_biometrics("Charlie", v, "91-7777-8888-9999")
+        
+        # Connect to check initial timestamp
+        import sqlite3
+        conn = sqlite3.connect("test_raya.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT last_checkin FROM raya_users WHERE id = ?", (user_id,))
+        initial_checkin = cursor.fetchone()[0]
+        conn.close()
+        
+        # Manually backdate the checkin to 10 minutes ago
+        conn = sqlite3.connect("test_raya.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE raya_users SET last_checkin = datetime('now', '-10 minutes') WHERE id = ?", (user_id,))
+        conn.commit()
+        
+        cursor.execute("SELECT last_checkin FROM raya_users WHERE id = ?", (user_id,))
+        backdated_checkin = cursor.fetchone()[0]
+        conn.close()
+        
+        self.assertNotEqual(initial_checkin, backdated_checkin)
+        
+        # Run identification checkin
+        probe = self.matcher.generate_probe_encoding(v, noise_level=0.01)
+        matched_user, _ = self.matcher.identify_user(probe)
+        
+        self.assertIsNotNone(matched_user)
+        
+        # Query database again to verify check-in updated
+        conn = sqlite3.connect("test_raya.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT last_checkin FROM raya_users WHERE id = ?", (user_id,))
+        updated_checkin = cursor.fetchone()[0]
+        conn.close()
+        
+        self.assertNotEqual(backdated_checkin, updated_checkin)
+
+    def test_delete_inactive_users(self):
+        v1 = self.matcher.generate_random_encoding()
+        v2 = self.matcher.generate_random_encoding()
+        
+        id_active = self.matcher.register_user_biometrics("ActivePatient", v1, "91-1111-2222-3333")
+        id_inactive = self.matcher.register_user_biometrics("InactivePatient", v2, "91-4444-5555-6666")
+        
+        # Backdate the inactive user to 20 days ago
+        import sqlite3
+        conn = sqlite3.connect("test_raya.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE raya_users SET last_checkin = datetime('now', '-20 days') WHERE id = ?", (id_inactive,))
+        conn.commit()
+        conn.close()
+        
+        # Run cleanup for 10 days of inactivity
+        from database.raya_db import delete_inactive_users, get_all_raya_users
+        deleted_count = delete_inactive_users(inactive_days=10)
+        
+        self.assertEqual(deleted_count, 1)
+        
+        # Verify active user still exists, inactive is gone
+        all_users = get_all_raya_users()
+        user_ids = [u["id"] for u in all_users]
+        
+        self.assertIn(id_active, user_ids)
+        self.assertNotIn(id_inactive, user_ids)
+
+
 
 class TestABHAClient(unittest.TestCase):
     

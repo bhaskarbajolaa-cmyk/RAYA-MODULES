@@ -12,7 +12,8 @@ from database import (
     seed_abha_db,
     init_raya_db,
     get_all_raya_users,
-    update_user_abha_link
+    update_user_abha_link,
+    delete_inactive_users
 )
 from abha_interface import ABHAClient, BiometricMatcher
 
@@ -208,6 +209,44 @@ def main():
             print_success(f"Linked ABHA number found: {abha_num}")
     else:
         print_error("User not found.")
+
+    # --- SCENARIO D: Auto-cleanup of inactive profiles ---
+    print_header("SCENARIO D: Biometric Stale Profile Auto-Cleanup")
+    print_info("Registering 'Stale Steve' in the local system...")
+    steve_vec = matcher.generate_random_encoding()
+    steve_id = matcher.register_user_biometrics("Stale Steve", steve_vec, abha_number=None)
+    print_success(f"Registered Stale Steve (User ID: {steve_id}).")
+    
+    # Manually backdating Steve's check-in to 45 days ago in the SQLite database
+    import sqlite3
+    from database import RAYA_DB_PATH
+    print_info("Simulating passing of time: Backdating Steve's check-in to 45 days ago...")
+    conn = sqlite3.connect(RAYA_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE raya_users SET last_checkin = datetime('now', '-45 days') WHERE id = ?", (steve_id,))
+    conn.commit()
+    conn.close()
+    print_success("Backdated Stale Steve's check-in in the database successfully.")
+    
+    # Check total user count
+    users_before = len(get_all_raya_users())
+    print(f"Total profiles in local database before cleanup: {users_before}")
+    
+    # Run cleanup for profiles inactive for more than 30 days
+    print_info("Running database cleanup for profiles inactive for > 30 days...")
+    deleted = delete_inactive_users(inactive_days=30)
+    print_success(f"Cleanup finished! Removed {deleted} stale profile(s).")
+    
+    # Check total user count again
+    users_after = len(get_all_raya_users())
+    print(f"Total profiles in local database after cleanup: {users_after}")
+    
+    # Confirm Steve is deleted
+    remaining_names = [u["full_name"] for u in get_all_raya_users()]
+    if "Stale Steve" not in remaining_names:
+        print_success("Confirmed: Stale Steve's biometric record was permanently deleted.")
+    else:
+        print_error("Failed: Stale Steve's profile was not deleted.")
 
     print_header("Simulation Finished")
 

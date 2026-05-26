@@ -34,6 +34,7 @@ def init_raya_db() -> None:
             full_name TEXT NOT NULL,
             face_encoding BLOB NOT NULL, -- 128-d float vector
             abha_number TEXT,            -- Link to ABHA database (optional/nullable)
+            last_checkin TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -83,6 +84,33 @@ def update_user_abha_link(user_id: int, abha_number: Optional[str]) -> None:
     conn.commit()
     conn.close()
 
+def update_user_checkin(user_id: int) -> None:
+    """
+    Updates the last check-in timestamp of a user to the current time.
+    """
+    conn = get_connection(RAYA_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE raya_users SET last_checkin = CURRENT_TIMESTAMP WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+def delete_inactive_users(inactive_days: int) -> int:
+    """
+    Removes user profiles who haven't checked in (scanned face) for more than the specified days.
+    Returns the number of profiles deleted.
+    """
+    conn = get_connection(RAYA_DB_PATH)
+    cursor = conn.cursor()
+    # In SQLite, datetime('now', '-X days') yields the cutoff point
+    cursor.execute(
+        "DELETE FROM raya_users WHERE last_checkin < datetime('now', ?)",
+        (f"-{inactive_days} days",)
+    )
+    deleted_count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return deleted_count
+
 def find_nearest_neighbor(
     probe_encoding: List[float]
 ) -> Optional[Tuple[Dict[str, Any], float]]:
@@ -100,7 +128,7 @@ def find_nearest_neighbor(
     # Query sorting by euclidean distance to the probe BLOB
     cursor.execute(
         """
-        SELECT id, full_name, abha_number, face_encoding, created_at,
+        SELECT id, full_name, abha_number, face_encoding, last_checkin, created_at,
                euclidean_distance(face_encoding, ?) AS distance
         FROM raya_users
         ORDER BY distance ASC
@@ -126,7 +154,7 @@ def get_all_raya_users() -> List[Dict[str, Any]]:
     """
     conn = get_connection(RAYA_DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, full_name, abha_number, face_encoding, created_at FROM raya_users")
+    cursor.execute("SELECT id, full_name, abha_number, face_encoding, last_checkin, created_at FROM raya_users")
     rows = cursor.fetchall()
     conn.close()
     

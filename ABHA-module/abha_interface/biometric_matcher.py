@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
-from database.raya_db import find_nearest_neighbor, insert_raya_user
+from database.raya_db import find_nearest_neighbor, insert_raya_user, update_user_checkin
 
 class BiometricMatcher:
     """
@@ -61,6 +61,7 @@ class BiometricMatcher:
             
         user, distance = match
         if distance <= self.threshold:
+            update_user_checkin(user["id"])
             return user, distance
             
         # Match found, but distance is greater than the threshold (unrecognized face)
