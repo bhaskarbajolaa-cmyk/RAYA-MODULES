@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAYA AI Receptionist Kiosk</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body>
+    <div class="kiosk-container">
+        <!-- Header -->
+        <header class="kiosk-header">
+            <div class="header-logo">
+                <div class="logo-icon">➕</div>
+                <div class="logo-text">
+                    <h1>RAYA AI RECEPTONIST</h1>
+                    <p>Government Digital Health Mission (ABDM)</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="db-status">
+                    <span class="status-dot green"></span>
+                    <span class="status-lbl">Registry Connected</span>
+                    <button id="btn-reset-db" class="btn-secondary" title="Re-initialize and Seed Database">Reset
+                        DB</button>
+                </div>
+                <div class="language-toggle">
+                    <span class="lang-lbl">English</span>
+                    <label class="switch">
+                        <input type="checkbox" id="lang-switch">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="lang-lbl">हिंदी</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="kiosk-workspace">
+            <!-- Left Column: Vision/Scanner -->
+            <section class="workspace-left">
+                <div class="camera-card glass">
+                    <div class="scanner-ring-container state-idle" id="scanner-ring">
+                        <video id="webcam" autoplay playsinline muted></video>
+                        <canvas id="snapshot-canvas" style="display:none;"></canvas>
+                        <div class="scanner-gaze-box"></div>
+                    </div>
+                    <div class="camera-status">
+                        <h3 id="camera-status-text">Scanning face...</h3>
+                        <p id="camera-sub-text">Please stand in front of the scanner</p>
+                    </div>
+                    <div class="camera-actions">
+                        <button id="btn-manual-scan" class="btn-primary">Scan Face Now</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Flow / Interaction -->
+            <section class="workspace-right">
+                <!-- Card 1: Greeting & Verification Flow -->
+                <div class="flow-card glass active" id="card-welcome">
+                    <div class="card-header">
+                        <h2>Welcome to Outpatient Desk</h2>
+                        <span class="badge blue">Scan Required</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="welcome-desc">Welcome to the Government Hospital kiosk. Please look at the camera for
+                            biometric check-in, or use the buttons below to log in or register.</p>
+
+                        <div class="welcome-actions">
+                            <button id="btn-show-login" class="btn-secondary">Login with ABHA ID</button>
+                            <button id="btn-show-register" class="btn-secondary">Create ABHA ID</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Manual Login / Search -->
+                <div class="flow-card glass" id="card-login">
+                    <div class="card-header">
+                        <h2>ABHA Health Login</h2>
+                        <button class="btn-close" onclick="showCard('card-welcome')">×</button>
+                    </div>
+                    <div class="card-body">
+                        <p class="section-desc">Search for your national digital health profile using your ABHA number
+                            or address.</p>
+                        <div class="form-group">
+                            <label for="login-abha-id">ABHA Number or Address</label>
+                            <input type="text" id="login-abha-id" placeholder="e.g. 91-1111-2222-3333 or name@abdm"
+                                required>
+                        </div>
+                        <div class="form-actions">
+                            <button id="btn-login-search" class="btn-primary">Search profile</button>
+                            <button class="btn-secondary" onclick="showCard('card-welcome')">Cancel</button>
+                        </div>
+                        <div id="login-error" class="error-msg" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Register New ABHA ID -->
+                <div class="flow-card glass" id="card-register">
+                    <div class="card-header">
+                        <h2>Register New ABHA ID</h2>
+                        <button class="btn-close" onclick="showCard('card-welcome')">×</button>
+                    </div>
+                    <div class="card-body scrollable">
+                        <p class="section-desc">Fill in demographic details to register in the Central ABDM registry and
+                            link your biometrics.</p>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="reg-name">Full Name</label>
+                                <input type="text" id="reg-name" placeholder="Enter full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-dob">Date of Birth</label>
+                                <input type="date" id="reg-dob" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-gender">Gender</label>
+                                <select id="reg-gender" required>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-mobile">Mobile Number</label>
+                                <input type="tel" id="reg-mobile" placeholder="10-digit mobile number"
+                                    pattern="[0-9]{10}" required>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="reg-prefix">Preferred ABHA Address Prefix</label>
+                                <input type="text" id="reg-prefix" placeholder="e.g. suresh_kumar" required>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button id="btn-submit-register" class="btn-primary">Generate ABHA & Link Face</button>
+                            <button class="btn-secondary" onclick="showCard('card-welcome')">Cancel</button>
+                        </div>
+                        <div id="register-error" class="error-msg" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Triage Voice Assistant -->
+                <div class="flow-card glass" id="card-triage">
+                    <div class="card-header">
+                        <h2>Triage Symptoms Interview</h2>
+                        <span class="badge green" id="triage-patient-name">Patient</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Chat Conversation Interface -->
+                        <div class="chat-container" id="chat-messages">
+                            <!-- Messages get injected here -->
+                        </div>
+
+                        <!-- Voice indicator & text input fallback -->
+                        <div class="voice-input-panel">
+                            <button id="btn-mic" class="btn-mic-active" title="Click to speak">
+                                <div class="mic-icon">🎤</div>
+                                <div class="pulse-ring"></div>
+                            </button>
+                            <div class="voice-status">
+                                <p id="voice-status-txt">Voice Engine Active</p>
+                                <span class="transcription-preview" id="voice-preview">Waiting for speech...</span>
+                            </div>
+                        </div>
+
+                        <!-- Manual Text Fallback -->
+                        <div class="text-fallback-input">
+                            <input type="text" id="txt-symptoms-input" placeholder="Or type your symptoms here...">
+                            <button id="btn-submit-symptoms" class="btn-primary">Submit</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Token Ticket PDF Preview -->
+                <div class="flow-card glass" id="card-token">
+                    <div class="card-header">
+                        <h2>Your Outpatient Token</h2>
+                        <span class="badge red" id="token-badge-priority">NORMAL</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="token-success-header">
+                            <div class="success-icon">✓</div>
+                            <h3>Token Created Successfully!</h3>
+                            <p>Please present the printed ticket or the screen details at your department room.</p>
+                        </div>
+
+                        <div class="token-split-view">
+                            <div class="token-details-text">
+                                <div class="token-large" id="lbl-token-number">NEUR-001</div>
+                                <div class="token-meta">
+                                    <div class="meta-row"><span>Queue No:</span> <strong
+                                            id="lbl-token-queue">12</strong></div>
+                                    <div class="meta-row"><span>Department:</span> <strong
+                                            id="lbl-token-dept">NEUROLOGY</strong></div>
+                                    <div class="meta-row"><span>Priority:</span> <strong
+                                            id="lbl-token-priority">URGENT</strong></div>
+                                </div>
+                                <div class="token-actions">
+                                    <a id="lnk-download-pdf" href="#" download class="btn-primary">Download PDF
+                                        Token</a>
+                                    <button class="btn-secondary" onclick="resetKiosk()">Register Another
+                                        Patient</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Repeating Customer History Log -->
+        <footer class="kiosk-footer glass" id="patient-history-section" style="display:none;">
+            <div class="footer-header">
+                <h3>Patient Demographics & Medical History</h3>
+                <span class="badge gold" id="history-patient-badge">Repeating Customer</span>
+            </div>
+            <div class="footer-body">
+                <div class="patient-profile-summary">
+                    <div class="prof-item"><span>ABHA Number:</span> <strong id="prof-abha">91-1111-2222-3333</strong>
+                    </div>
+                    <div class="prof-item"><span>ABHA Address:</span> <strong
+                            id="prof-address">suresh.kumar@abdm</strong></div>
+                    <div class="prof-item"><span>DOB / Age:</span> <strong id="prof-dob">1985-05-12 (41 Years)</strong>
+                    </div>
+                    <div class="prof-item"><span>Gender:</span> <strong id="prof-gender">M</strong></div>
+                    <div class="prof-item"><span>Mobile:</span> <strong id="prof-mobile">9876543210</strong></div>
+                </div>
+                <div class="history-table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Token</th>
+                                <th>Department</th>
+                                <th>Presented Symptoms</th>
+                                <th>Clinical Summary</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Injected rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Audio notification helpers -->
+    <audio id="snd-beep"
+        src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==\"></audio>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>
