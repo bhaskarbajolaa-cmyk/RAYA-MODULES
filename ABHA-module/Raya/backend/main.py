@@ -2,6 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import users, abha, tokens, face
+from app.core.database import abha_engine, raya_engine
+from app.models import domain
+
+# Create database tables if they don't exist
+domain.Base.metadata.create_all(bind=abha_engine)
+domain.Base.metadata.create_all(bind=raya_engine)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
