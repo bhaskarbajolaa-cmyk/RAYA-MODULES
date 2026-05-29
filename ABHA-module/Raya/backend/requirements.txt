@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib==1.7.4
+python-multipart==0.0.6
+mediapipe==0.10.3
+opencv-python-headless==4.8.1.78
+numpy
